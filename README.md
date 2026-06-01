@@ -61,6 +61,31 @@ No Windows, tambem e possivel iniciar pelo arquivo:
 Iniciar_FinancasCasa.bat
 ```
 
+## Git e sincronizacao
+
+O projeto agora esta conectado ao repositorio remoto abaixo:
+
+```text
+https://github.com/marciotonon/FinancasCasa.git
+```
+
+Arquivos auxiliares criados no projeto:
+
+- `Git_Pull.bat`: faz `pull --rebase --autostash` da branch `main`
+- `Git_Push.bat`: faz `add`, `commit`, `pull --rebase --autostash` e `push` para a `main`
+
+Exemplos de uso:
+
+```text
+Git_Pull.bat
+```
+
+```text
+Git_Push.bat "ajusta filtros de contas"
+```
+
+Observacao: o GitHub pode pedir autenticacao na primeira operacao de push ou pull, dependendo da sua sessao local.
+
 ## Estrutura do projeto
 
 ```text
