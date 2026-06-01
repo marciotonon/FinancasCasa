@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FinançasCasa{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">
+            <i class="fas fa-home"></i> FinançasCasa
+        </div>
+        <ul class="nav-links">
+            <li><a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}><i class="fas fa-chart-pie"></i> Dashboard</a></li>
+            <li><a href="{{ url_for('transacoes') }}" {% if request.endpoint in ['transacoes','nova_transacao'] %}class="active"{% endif %}><i class="fas fa-exchange-alt"></i> Transações</a></li>
+            <li><a href="{{ url_for('contas') }}" {% if request.endpoint in ['contas','nova_conta'] %}class="active"{% endif %}><i class="fas fa-file-invoice-dollar"></i> Contas a Pagar</a></li>
+            <li><a href="{{ url_for('relatorios') }}" {% if request.endpoint == 'relatorios' %}class="active"{% endif %}><i class="fas fa-chart-bar"></i> Relatórios</a></li>
+        </ul>
+    </nav>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    <!-- Modal Baixa de Conta -->
+    <div id="modalBaixa" class="modal-overlay" style="display:none">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-check-circle"></i> Baixar Conta</h3>
+                <button class="modal-close" onclick="fecharBaixa()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <p id="modalDescricao" class="modal-desc"></p>
+                <form id="formBaixa" method="post">
+                    <input type="hidden" name="origem" id="modalOrigem" value="contas">
+                    <div class="form-group">
+                        <label for="data_pagamento">Data do pagamento</label>
+                        <input type="date" id="data_pagamento" name="data_pagamento" class="form-control" required>
+                    </div>
+                    <div class="form-actions" style="margin-top:1rem;padding-top:1rem">
+                        <button type="submit" class="btn btn-green btn-lg"><i class="fas fa-check"></i> Confirmar Baixa</button>
+                        <button type="button" class="btn btn-secondary btn-lg" onclick="fecharBaixa()">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script>
+        const hoje = new Date().toISOString().slice(0, 10);
+        function abrirBaixa(id, descricao, valor) {
+            const path = window.location.pathname;
+            const origem = (path === '/' || path === '/index') ? 'index' : 'contas';
+            document.getElementById('formBaixa').action = '/contas/baixar/' + id;
+            document.getElementById('modalDescricao').textContent =
+                descricao + '  —  R$ ' + valor.toFixed(2).replace('.', ',');
+            document.getElementById('data_pagamento').value = hoje;
+            document.getElementById('modalOrigem').value = origem;
+            document.getElementById('modalBaixa').style.display = 'flex';
+        }
+        function fecharBaixa() {
+            document.getElementById('modalBaixa').style.display = 'none';
+        }
+        document.getElementById('modalBaixa').addEventListener('click', function(e) {
+            if (e.target === this) fecharBaixa();
+        });
+    </script>
+</body>
+</html>

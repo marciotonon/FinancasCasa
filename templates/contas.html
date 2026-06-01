@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Contas a Pagar - FinançasCasa{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-file-invoice-dollar"></i> Contas a Pagar</h1>
+    <a href="{{ url_for('nova_conta') }}" class="btn btn-warning"><i class="fas fa-plus"></i> Nova Conta</a>
+</div>
+
+<div class="panel">
+    <div class="panel-header">
+        <h2><i class="fas fa-filter"></i> Filtros</h2>
+    </div>
+    <form class="filter-form" method="get">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status" class="form-control">
+                    <option value="">Todos</option>
+                    <option value="pendente" {% if filtro_status == 'pendente' %}selected{% endif %}>Pendente</option>
+                    <option value="pago" {% if filtro_status == 'pago' %}selected{% endif %}>Pago</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Mês</label>
+                <input type="month" name="mes" value="{{ filtro_mes }}" class="form-control">
+            </div>
+            <div class="form-group form-group-btn">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar</button>
+                <a href="{{ url_for('contas') }}" class="btn btn-secondary"><i class="fas fa-times"></i> Limpar</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="panel">
+    {% if contas %}
+    {% for grupo in contas_por_mes %}
+    <div class="panel-header">
+        <h2><i class="fas fa-calendar-alt"></i> {{ grupo.titulo }}</h2>
+    </div>
+    <table class="table table-hover">
+        <thead>
+            <tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+        {% for c in grupo.contas %}
+        <tr class="{% if c.status == 'pendente' and c.vencimento < hoje %}row-vencida{% endif %}">
+            <td>
+                {{ c.vencimento }}
+                {% if c.status == 'pendente' and c.vencimento < hoje %}
+                <span class="badge badge-red">Vencida</span>
+                {% endif %}
+            </td>
+            <td>
+                {{ c.descricao }}
+                {% if c.recorrente %}<span class="badge badge-blue" title="Conta recorrente"><i class="fas fa-redo"></i></span>{% endif %}
+                {% if c.observacao %}<br><small class="text-muted">{{ c.observacao }}</small>{% endif %}
+            </td>
+            <td><span class="badge">{{ c.categoria }}</span></td>
+            <td class="valor-negativo fw-bold">R$ {{ "%.2f"|format(c.valor) }}</td>
+            <td>
+                {% if c.status == 'pago' %}
+                <span class="badge badge-green"><i class="fas fa-check"></i> Pago em {{ c.data_pagamento }}</span>
+                {% else %}
+                <span class="badge badge-orange"><i class="fas fa-clock"></i> Pendente</span>
+                {% endif %}
+            </td>
+            <td class="actions-td">
+                {% if c.status == 'pendente' %}
+                <button
+                    class="btn btn-sm btn-green js-abrir-baixa"
+                    data-conta-id="{{ c.id }}"
+                    data-conta-descricao="{{ c.descricao }}"
+                    data-conta-valor="{{ c.valor }}"
+                    type="button">
+                    <i class="fas fa-check"></i> Baixar
+                </button>
+                {% endif %}
+                <form method="post" action="{{ url_for('excluir_conta', cid=c.id) }}" style="display:inline" onsubmit="return confirm('Excluir esta conta?')">
+                    <button class="btn btn-sm btn-danger" title="Excluir"><i class="fas fa-trash"></i></button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state"><i class="fas fa-check-circle"></i><p>Nenhuma conta encontrada.</p></div>
+    {% endif %}
+</div>
+{% endblock %}

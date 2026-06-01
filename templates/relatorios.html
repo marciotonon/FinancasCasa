@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Relatórios - FinançasCasa{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-chart-bar"></i> Relatórios</h1>
+</div>
+
+<div class="cards-grid cards-grid-3">
+    <div class="card card-green">
+        <div class="card-icon"><i class="fas fa-arrow-down"></i></div>
+        <div class="card-info"><span class="card-label">Total Entradas</span><span class="card-value">R$ {{ "%.2f"|format(resumo.entradas) }}</span></div>
+    </div>
+    <div class="card card-red">
+        <div class="card-icon"><i class="fas fa-arrow-up"></i></div>
+        <div class="card-info"><span class="card-label">Total Saídas</span><span class="card-value">R$ {{ "%.2f"|format(resumo.saidas) }}</span></div>
+    </div>
+    <div class="card {% if resumo.saldo >= 0 %}card-blue{% else %}card-red{% endif %}">
+        <div class="card-icon"><i class="fas fa-wallet"></i></div>
+        <div class="card-info"><span class="card-label">Saldo</span><span class="card-value">R$ {{ "%.2f"|format(resumo.saldo) }}</span></div>
+    </div>
+</div>
+
+<div class="grid-2col">
+    <div class="panel">
+        <div class="panel-header">
+            <h2><i class="fas fa-calendar-alt"></i> Resumo Mensal</h2>
+        </div>
+        {% if dados_meses %}
+        <table class="table">
+            <thead><tr><th>Mês</th><th class="text-right">Entradas</th><th class="text-right">Saídas</th><th class="text-right">Saldo</th></tr></thead>
+            <tbody>
+            {% for m in dados_meses %}
+            <tr>
+                <td>{{ m.mes }}</td>
+                <td class="text-right valor-positivo">R$ {{ "%.2f"|format(m.entradas) }}</td>
+                <td class="text-right valor-negativo">R$ {{ "%.2f"|format(m.saidas) }}</td>
+                <td class="text-right {% if m.saldo >= 0 %}valor-positivo{% else %}valor-negativo{% endif %} fw-bold">
+                    R$ {{ "%.2f"|format(m.saldo) }}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-inbox"></i><p>Sem dados para exibir.</p></div>
+        {% endif %}
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2><i class="fas fa-tags"></i> Gastos por Categoria</h2>
+        </div>
+        {% if categorias_data %}
+        <div class="categorias-list">
+            {% set total_saidas = resumo.saidas if resumo.saidas > 0 else 1 %}
+            {% for c in categorias_data %}
+            {% set pct = (c.total / total_saidas * 100)|round(1) %}
+            <div class="categoria-item">
+                <div class="categoria-header">
+                    <span class="badge">{{ c.categoria }}</span>
+                    <span class="valor-negativo fw-bold">R$ {{ "%.2f"|format(c.total) }}</span>
+                </div>
+                <div class="progress-bar-wrap">
+                    <div class="progress-bar" style="width: {{ pct }}%"></div>
+                </div>
+                <small class="text-muted">{{ pct }}% do total de saídas</small>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-inbox"></i><p>Sem dados de saídas.</p></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

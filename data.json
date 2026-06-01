@@ -1,0 +1,109 @@
+{
+  "transacoes": [
+    {
+      "id": 1780241629623,
+      "descricao": "salario",
+      "valor": 8500.0,
+      "tipo": "entrada",
+      "categoria": "Salário",
+      "data": "2026-05-31",
+      "observacao": "",
+      "cancelado": false
+    },
+    {
+      "id": 1780312954132,
+      "descricao": "Pagamento: Prestacao Carro",
+      "valor": 1307.0,
+      "tipo": "saida",
+      "categoria": "Transporte",
+      "data": "2026-06-01",
+      "observacao": "Baixa automática da conta #1780243194915",
+      "cancelado": false
+    },
+    {
+      "id": 1780313175766,
+      "descricao": "Pagamento: aluguel",
+      "valor": 900.0,
+      "tipo": "saida",
+      "categoria": "Moradia",
+      "data": "2026-05-01",
+      "observacao": "Baixa automática da conta #1780313159044",
+      "cancelado": false
+    },
+    {
+      "id": 1780313261183,
+      "descricao": "Pagamento: carro",
+      "valor": 1307.0,
+      "tipo": "saida",
+      "categoria": "Transporte",
+      "data": "2026-05-01",
+      "observacao": "Baixa automática da conta #1780313253862",
+      "cancelado": false
+    },
+    {
+      "id": 1780317960429,
+      "descricao": "salario",
+      "valor": 10000.0,
+      "tipo": "entrada",
+      "categoria": "Salário",
+      "data": "2026-06-01",
+      "observacao": "",
+      "cancelado": false
+    }
+  ],
+  "contas": [
+    {
+      "id": 1780242528014,
+      "descricao": "aluguel",
+      "valor": 900.0,
+      "vencimento": "2026-06-10",
+      "categoria": "Moradia",
+      "status": "pendente",
+      "observacao": "",
+      "recorrente": true
+    },
+    {
+      "id": 1780243194915,
+      "descricao": "Prestacao Carro",
+      "valor": 1307.0,
+      "vencimento": "2026-06-10",
+      "categoria": "Transporte",
+      "status": "pago",
+      "observacao": "fork ka",
+      "recorrente": true,
+      "data_pagamento": "2026-06-01"
+    },
+    {
+      "id": 1780313159044,
+      "descricao": "aluguel",
+      "valor": 900.0,
+      "vencimento": "2026-05-01",
+      "categoria": "Moradia",
+      "status": "pago",
+      "observacao": "",
+      "recorrente": true,
+      "data_pagamento": "2026-05-01"
+    },
+    {
+      "id": 1780313253862,
+      "descricao": "carro",
+      "valor": 1307.0,
+      "vencimento": "2026-05-04",
+      "categoria": "Transporte",
+      "status": "pago",
+      "observacao": "",
+      "recorrente": true,
+      "data_pagamento": "2026-05-01"
+    }
+  ],
+  "categorias": [
+    "Alimentação",
+    "Moradia",
+    "Transporte",
+    "Saúde",
+    "Educação",
+    "Lazer",
+    "Salário",
+    "Outros"
+  ]
+}

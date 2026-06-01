@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - FinançasCasa{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-chart-pie"></i> Dashboard</h1>
+    <div class="header-actions">
+        <a href="{{ url_for('nova_transacao') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Nova Transação</a>
+        <a href="{{ url_for('nova_conta') }}" class="btn btn-warning"><i class="fas fa-plus"></i> Nova Conta</a>
+    </div>
+</div>
+
+<div class="cards-grid">
+    <div class="card card-green">
+        <div class="card-icon"><i class="fas fa-arrow-down"></i></div>
+        <div class="card-info">
+            <span class="card-label">Total Entradas</span>
+            <span class="card-value">R$ {{ "%.2f"|format(resumo.entradas) }}</span>
+        </div>
+    </div>
+    <div class="card card-red">
+        <div class="card-icon"><i class="fas fa-arrow-up"></i></div>
+        <div class="card-info">
+            <span class="card-label">Total Saídas</span>
+            <span class="card-value">R$ {{ "%.2f"|format(resumo.saidas) }}</span>
+        </div>
+    </div>
+    <div class="card {% if resumo.saldo >= 0 %}card-blue{% else %}card-red{% endif %}">
+        <div class="card-icon"><i class="fas fa-wallet"></i></div>
+        <div class="card-info">
+            <span class="card-label">Saldo Atual</span>
+            <span class="card-value">R$ {{ "%.2f"|format(resumo.saldo) }}</span>
+        </div>
+    </div>
+    <div class="card card-orange">
+        <div class="card-icon"><i class="fas fa-clock"></i></div>
+        <div class="card-info">
+            <span class="card-label">Contas Pendentes</span>
+            <span class="card-value">{{ resumo.contas_pendentes }} | R$ {{ "%.2f"|format(resumo.total_pendente) }}</span>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2col">
+    <div class="panel">
+        <div class="panel-header">
+            <h2><i class="fas fa-history"></i> Últimas Transações</h2>
+            <a href="{{ url_for('transacoes') }}" class="link-all">Ver todas</a>
+        </div>
+        {% if transacoes %}
+        <table class="table">
+            <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead>
+            <tbody>
+            {% for t in transacoes %}
+            <tr>
+                <td>{{ t.data }}</td>
+                <td>{{ t.descricao }}</td>
+                <td><span class="badge">{{ t.categoria }}</span></td>
+                <td class="{% if t.tipo == 'entrada' %}valor-positivo{% else %}valor-negativo{% endif %}">
+                    {% if t.tipo == 'entrada' %}+{% else %}-{% endif %}R$ {{ "%.2f"|format(t.valor) }}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-inbox"></i><p>Nenhuma transação registrada.</p></div>
+        {% endif %}
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2><i class="fas fa-exclamation-circle"></i> Contas a Vencer</h2>
+            <a href="{{ url_for('contas') }}" class="link-all">Ver todas</a>
+        </div>
+        {% if contas_pendentes %}
+        <table class="table">
+            <thead><tr><th>Vencimento</th><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead>
+            <tbody>
+            {% for c in contas_pendentes %}
+            <tr class="{% if c.vencimento < hoje %}row-vencida{% endif %}">
+                <td>
+                    {{ c.vencimento }}
+                    {% if c.vencimento < hoje %}<span class="badge badge-red">Vencida</span>{% endif %}
+                </td>
+                <td>{{ c.descricao }}</td>
+                <td class="valor-negativo">R$ {{ "%.2f"|format(c.valor) }}</td>
+                <td>
+                    <button class="btn btn-sm btn-green" onclick="abrirBaixa({{ c.id }}, '{{ c.descricao }}', {{ c.valor }})" title="Baixar conta">
+                        <i class="fas fa-check"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state"><i class="fas fa-check-circle"></i><p>Nenhuma conta pendente!</p></div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
