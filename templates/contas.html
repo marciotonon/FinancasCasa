@@ -3,18 +3,21 @@
 {% block content %}
 <div class="page-header">
     <h1><i class="fas fa-file-invoice-dollar"></i> Contas a Pagar</h1>
-    <a href="{{ url_for('nova_conta') }}" class="btn btn-warning"><i class="fas fa-plus"></i> Nova Conta</a>
+    <div style="display:flex;gap:8px">
+        <button id="btnModoSelecao" class="btn btn-primary" onclick="toggleSelecao()"><i class="fas fa-check-square"></i> Baixa Múltipla</button>
+        <a href="{{ url_for('nova_conta') }}" class="btn btn-warning"><i class="fas fa-plus"></i> Nova Conta</a>
+    </div>
 </div>
 
 <div class="panel">
     <div class="panel-header">
         <h2><i class="fas fa-filter"></i> Filtros</h2>
     </div>
-    <form class="filter-form" method="get">
+    <form class="filter-form" method="get" id="form-filtros">
         <div class="form-row">
             <div class="form-group">
                 <label>Status</label>
-                <select name="status" class="form-control">
+                <select name="status" class="form-control" onchange="document.getElementById('form-filtros').submit()">
                     <option value="">Todos</option>
                     <option value="pendente" {% if filtro_status == 'pendente' %}selected{% endif %}>Pendente</option>
                     <option value="pago" {% if filtro_status == 'pago' %}selected{% endif %}>Pago</option>
@@ -22,10 +25,14 @@
             </div>
             <div class="form-group">
                 <label>Mês</label>
-                <input type="month" name="mes" value="{{ filtro_mes }}" class="form-control">
+                <input type="month" name="mes" value="{{ filtro_mes }}" class="form-control" onchange="document.getElementById('form-filtros').submit()">
+            </div>
+            <div class="form-group form-group-grow">
+                <label>Buscar por Nome</label>
+                <input type="text" name="nome" value="{{ filtro_nome }}" class="form-control" placeholder="Digite o nome da conta...">
             </div>
             <div class="form-group form-group-btn">
-                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Filtrar</button>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Buscar</button>
                 <a href="{{ url_for('contas') }}" class="btn btn-secondary"><i class="fas fa-times"></i> Limpar</a>
             </div>
         </div>
@@ -38,13 +45,35 @@
     <div class="panel-header">
         <h2><i class="fas fa-calendar-alt"></i> {{ grupo.titulo }}</h2>
     </div>
+    <div class="cards-grid cards-grid-3" style="margin-bottom: 1rem;">
+        <div class="card card-red">
+            <div class="card-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+            <div class="card-info"><span class="card-label">Total das Contas</span><span class="card-value">R$ {{ "%.2f"|format(grupo.total) }}</span></div>
+        </div>
+        <div class="card card-green">
+            <div class="card-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="card-info"><span class="card-label">Valor Pago</span><span class="card-value">R$ {{ "%.2f"|format(grupo.total_pago) }}</span></div>
+        </div>
+        <div class="card card-orange">
+            <div class="card-icon"><i class="fas fa-clock"></i></div>
+            <div class="card-info"><span class="card-label">A Pagar</span><span class="card-value">R$ {{ "%.2f"|format(grupo.total_a_pagar) }}</span></div>
+        </div>
+    </div>
     <table class="table table-hover">
         <thead>
-            <tr><th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Valor</th><th>Status</th><th>Ações</th></tr>
+            <tr>
+                <th class="col-check" style="display:none"><input type="checkbox" id="checkTodos" onchange="selecionarTodos(this)"></th>
+                <th>Vencimento</th><th>Descrição</th><th>Categoria</th><th>Total</th><th>A Pagar</th><th>Status</th><th>Ações</th>
+            </tr>
         </thead>
         <tbody>
         {% for c in grupo.contas %}
         <tr class="{% if c.status == 'pendente' and c.vencimento < hoje %}row-vencida{% endif %}">
+            <td class="col-check" style="display:none">
+                {% if c.status == 'pendente' %}
+                <input type="checkbox" class="check-conta" value="{{ c.id }}" onchange="atualizarBarra()">
+                {% endif %}
+            </td>
             <td>
                 {{ c.vencimento }}
                 {% if c.status == 'pendente' and c.vencimento < hoje %}
@@ -58,6 +87,14 @@
             </td>
             <td><span class="badge">{{ c.categoria }}</span></td>
             <td class="valor-negativo fw-bold">R$ {{ "%.2f"|format(c.valor) }}</td>
+            <td class="fw-bold" style="color:#856404">
+                {% if c.status == 'pago' %}
+                <span style="color:#28a745">R$ 0.00</span>
+                {% else %}
+                {% set restante = c.valor - (c.valor_pago if c.valor_pago is defined else 0) %}
+                R$ {{ "%.2f"|format([restante, 0]|max) }}
+                {% endif %}
+            </td>
             <td>
                 {% if c.status == 'pago' %}
                 <span class="badge badge-green"><i class="fas fa-check"></i> Pago em {{ c.data_pagamento }}</span>
@@ -72,11 +109,14 @@
                     data-conta-id="{{ c.id }}"
                     data-conta-descricao="{{ c.descricao }}"
                     data-conta-valor="{{ c.valor }}"
+                    data-conta-valor-pago="{{ c.valor_pago if c.valor_pago is defined else 0 }}"
                     type="button">
                     <i class="fas fa-check"></i> Baixar
                 </button>
+                <a href="{{ url_for('editar_conta', cid=c.id) }}" class="btn btn-sm btn-primary" title="Editar"><i class="fas fa-edit"></i> Editar</a>
                 {% endif %}
-                <form method="post" action="{{ url_for('excluir_conta', cid=c.id) }}" style="display:inline" onsubmit="return confirm('Excluir esta conta?')">
+                <form method="post" action="{{ url_for('excluir_conta', cid=c.id) }}" style="display:inline"
+                    onsubmit="return confirmarExclusao('{{ c.descricao }}')">
                     <button class="btn btn-sm btn-danger" title="Excluir"><i class="fas fa-trash"></i></button>
                 </form>
             </td>
@@ -88,5 +128,100 @@
     {% else %}
     <div class="empty-state"><i class="fas fa-check-circle"></i><p>Nenhuma conta encontrada.</p></div>
     {% endif %}
+</div>
+
+<script>
+function confirmarExclusao(descricao) {
+    const match = descricao.match(/^(.+) \((\d+)\/(\d+)\)$/);
+    if (match) {
+        const atual = parseInt(match[2]);
+        const total = parseInt(match[3]);
+        const restantes = total - atual;
+        if (restantes > 0) {
+            return confirm(`Excluir "${descricao}" e as próximas ${restantes} parcela(s)?`);
+        }
+    }
+    return confirm('Excluir esta conta?');
+}
+
+let modoSelecao = false;
+
+function toggleSelecao() {
+    modoSelecao = !modoSelecao;
+    document.querySelectorAll('.col-check').forEach(el => {
+        el.style.display = modoSelecao ? '' : 'none';
+    });
+    const btn = document.getElementById('btnModoSelecao');
+    btn.innerHTML = modoSelecao
+        ? '<i class="fas fa-times"></i> Cancelar Seleção'
+        : '<i class="fas fa-check-square"></i> Baixa Múltipla';
+    btn.className = modoSelecao ? 'btn btn-secondary' : 'btn btn-primary';
+    if (!modoSelecao) {
+        document.querySelectorAll('.check-conta').forEach(c => c.checked = false);
+        document.getElementById('checkTodos').checked = false;
+        document.getElementById('barraBaixaMultipla').style.display = 'none';
+    }
+}
+
+function selecionarTodos(master) {
+    document.querySelectorAll('.check-conta').forEach(c => c.checked = master.checked);
+    atualizarBarra();
+}
+
+function atualizarBarra() {
+    const selecionados = document.querySelectorAll('.check-conta:checked');
+    const barra = document.getElementById('barraBaixaMultipla');
+    if (selecionados.length > 0) {
+        document.getElementById('contaSelecionados').textContent = selecionados.length;
+        barra.style.display = 'flex';
+    } else {
+        barra.style.display = 'none';
+    }
+}
+
+function abrirModalMultiplo() {
+    const ids = Array.from(document.querySelectorAll('.check-conta:checked')).map(c => c.value);
+    const container = document.getElementById('idsMultiplo');
+    container.innerHTML = '';
+    ids.forEach(id => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden'; inp.name = 'ids[]'; inp.value = id;
+        container.appendChild(inp);
+    });
+    document.getElementById('data_multiplo').value = new Date().toISOString().slice(0,10);
+    const el = document.getElementById('contaSelecionados2');
+    if (el) el.textContent = ids.length;
+    document.getElementById('modalMultiplo').style.display = 'flex';
+}
+</script>
+
+<!-- Barra flutuante de baixa múltipla -->
+<div id="barraBaixaMultipla" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#1e293b;color:#fff;padding:1rem 2rem;z-index:999;align-items:center;justify-content:space-between;gap:1rem;box-shadow:0 -4px 16px rgba(0,0,0,0.2)">
+    <span style="font-size:1rem"><i class="fas fa-check-square"></i> <strong id="contaSelecionados">0</strong> conta(s) selecionada(s)</span>
+    <button class="btn btn-green btn-lg" onclick="abrirModalMultiplo()"><i class="fas fa-check"></i> Dar Baixa nas Selecionadas</button>
+</div>
+
+<!-- Modal Baixa Múltipla -->
+<div id="modalMultiplo" class="modal-overlay" style="display:none">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3><i class="fas fa-check-double"></i> Baixa Múltipla</h3>
+            <button class="modal-close" onclick="document.getElementById('modalMultiplo').style.display='none'"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <p class="modal-desc">Confirmar pagamento de <strong id="contaSelecionados2"></strong> conta(s)?</p>
+            <form method="post" action="{{ url_for('baixar_multiplo') }}" id="formMultiplo">
+                <div id="idsMultiplo"></div>
+                <div class="form-group">
+                    <label>Data do pagamento</label>
+                    <input type="date" id="data_multiplo" name="data_pagamento" class="form-control" required>
+                </div>
+                <div class="form-actions" style="margin-top:1rem;padding-top:1rem">
+                    <button type="submit" class="btn btn-green btn-lg"><i class="fas fa-check"></i> Confirmar Baixa</button>
+                    <button type="button" class="btn btn-secondary btn-lg" onclick="document.getElementById('modalMultiplo').style.display='none'">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}

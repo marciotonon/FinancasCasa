@@ -35,11 +35,27 @@
                 <form id="formBaixa" method="post">
                     <input type="hidden" name="origem" id="modalOrigem" value="contas">
                     <div class="form-group">
+                        <label>Forma de Pagamento</label>
+                        <div style="display:flex;gap:1rem;margin-top:4px">
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                                <input type="radio" name="forma_pagamento" value="dinheiro" checked onchange="toggleForma(this.value)"> Dinheiro (total)
+                            </label>
+                            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                                <input type="radio" name="forma_pagamento" value="parcelamento" onchange="toggleForma(this.value)"> Pagamento parcial
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group" id="campoValorParcial" style="display:none">
+                        <label for="valor_parcial">Valor pago agora (R$)</label>
+                        <input type="number" id="valor_parcial" name="valor_parcial" class="form-control" step="0.01" min="0.01" placeholder="0,00">
+                        <small id="restanteInfo" class="text-muted" style="margin-top:4px;display:block"></small>
+                    </div>
+                    <div class="form-group">
                         <label for="data_pagamento">Data do pagamento</label>
                         <input type="date" id="data_pagamento" name="data_pagamento" class="form-control" required>
                     </div>
                     <div class="form-actions" style="margin-top:1rem;padding-top:1rem">
-                        <button type="submit" class="btn btn-green btn-lg"><i class="fas fa-check"></i> Confirmar Baixa</button>
+                        <button type="submit" class="btn btn-green btn-lg"><i class="fas fa-check"></i> Confirmar</button>
                         <button type="button" class="btn btn-secondary btn-lg" onclick="fecharBaixa()">Cancelar</button>
                     </div>
                 </form>
@@ -50,15 +66,32 @@
     <script src="{{ url_for('static', filename='app.js') }}"></script>
     <script>
         const hoje = new Date().toISOString().slice(0, 10);
-        function abrirBaixa(id, descricao, valor) {
+        let _valorConta = 0;
+        let _valorJaPago = 0;
+        function abrirBaixa(id, descricao, valor, valorPago) {
             const path = window.location.pathname;
             const origem = (path === '/' || path === '/index') ? 'index' : 'contas';
+            _valorConta = valor;
+            _valorJaPago = valorPago || 0;
             document.getElementById('formBaixa').action = '/contas/baixar/' + id;
             document.getElementById('modalDescricao').textContent =
                 descricao + '  —  R$ ' + valor.toFixed(2).replace('.', ',');
             document.getElementById('data_pagamento').value = hoje;
             document.getElementById('modalOrigem').value = origem;
+            // reset forma
+            document.querySelector('input[name=forma_pagamento][value=dinheiro]').checked = true;
+            toggleForma('dinheiro');
             document.getElementById('modalBaixa').style.display = 'flex';
+        }
+        function toggleForma(forma) {
+            const campo = document.getElementById('campoValorParcial');
+            campo.style.display = forma === 'parcelamento' ? 'block' : 'none';
+            if (forma === 'parcelamento') {
+                const restante = _valorConta - _valorJaPago;
+                document.getElementById('valor_parcial').value = '';
+                document.getElementById('restanteInfo').textContent =
+                    'Saldo restante: R$ ' + restante.toFixed(2).replace('.', ',');
+            }
         }
         function fecharBaixa() {
             document.getElementById('modalBaixa').style.display = 'none';

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Editar Conta - FinançasCasa{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-edit"></i> Editar Conta</h1>
+    <a href="{{ url_for('contas') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+</div>
+
+<div class="panel panel-form">
+    <form method="post">
+        <div class="form-row">
+            <div class="form-group form-group-grow">
+                <label for="descricao">Descrição *</label>
+                <input type="text" id="descricao" name="descricao" class="form-control" value="{{ conta.descricao }}" required>
+            </div>
+            <div class="form-group">
+                <label for="categoria">Categoria *</label>
+                <select id="categoria" name="categoria" class="form-control" required>
+                    {% for cat in categorias %}
+                    <option value="{{ cat }}" {% if cat == conta.categoria %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="valor">Valor da Dívida (R$) *</label>
+                <input type="number" id="valor" name="valor" class="form-control" step="0.01" min="0.01"
+                    value="{{ conta.valor_original if conta.valor_original is defined else conta.valor }}"
+                    oninput="calcularTotal()" required>
+            </div>
+            <div class="form-group">
+                <label for="juros">Juros / Multa (R$)</label>
+                <input type="number" id="juros" name="juros" class="form-control" step="0.01" min="0"
+                    value="{{ conta.juros if conta.juros is defined else 0 }}"
+                    oninput="calcularTotal()">
+            </div>
+            <div class="form-group">
+                <label>Valor Total</label>
+                <input type="text" id="valor_total" class="form-control" readonly style="background:#f5f5f5; font-weight:bold;">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="entrada">Entrada (R$)</label>
+                <input type="number" id="entrada" name="entrada" class="form-control" step="0.01" min="0"
+                    value="{{ conta.entrada if conta.entrada is defined else 0 }}"
+                    oninput="calcularRestante()">
+            </div>
+            <div class="form-group">
+                <label for="valor_pago">Valor Pago (R$)</label>
+                <input type="number" id="valor_pago" name="valor_pago" class="form-control" step="0.01" min="0"
+                    value="{{ conta.valor_pago if conta.valor_pago is defined else 0 }}"
+                    oninput="calcularRestante()">
+            </div>
+            <div class="form-group">
+                <label>Valor a Pagar</label>
+                <input type="text" id="valor_restante" class="form-control" readonly style="background:#fff3cd; font-weight:bold; color:#856404;">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="vencimento">Vencimento *</label>
+            <input type="date" id="vencimento" name="vencimento" class="form-control" value="{{ conta.vencimento }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="observacao">Observação</label>
+            <textarea id="observacao" name="observacao" class="form-control" rows="2" placeholder="Opcional...">{{ conta.observacao }}</textarea>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-warning btn-lg"><i class="fas fa-save"></i> Salvar Alterações</button>
+            <a href="{{ url_for('contas') }}" class="btn btn-secondary btn-lg">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+function calcularTotal() {
+    const valor = parseFloat(document.getElementById('valor').value) || 0;
+    const juros = parseFloat(document.getElementById('juros').value) || 0;
+    const total = valor + juros;
+    document.getElementById('valor_total').value = 'R$ ' + total.toFixed(2).replace('.', ',');
+    calcularRestante();
+}
+function calcularRestante() {
+    const valor = parseFloat(document.getElementById('valor').value) || 0;
+    const juros = parseFloat(document.getElementById('juros').value) || 0;
+    const valorPago = parseFloat(document.getElementById('valor_pago').value) || 0;
+    const total = valor + juros;
+    const restante = Math.max(total - valorPago, 0);
+    document.getElementById('valor_restante').value = 'R$ ' + restante.toFixed(2).replace('.', ',');
+}
+// Calcular ao carregar a página
+calcularTotal();
+</script>
+{% endblock %}

@@ -9,6 +9,12 @@
 <div class="panel panel-form">
     <form method="post">
         <div class="form-row">
+            <div class="form-group">
+                <label for="entrada">Entrada / Valor já Pago (R$)</label>
+                <input type="number" id="entrada" name="entrada" class="form-control" step="0.01" min="0" value="0" placeholder="0,00">
+            </div>
+        </div>
+        <div class="form-row">
             <div class="form-group form-group-grow">
                 <label for="descricao">Descrição *</label>
                 <input type="text" id="descricao" name="descricao" class="form-control" placeholder="Ex: Luz, Água, Internet..." required>
@@ -33,14 +39,12 @@
             </div>
         </div>
         <div class="form-group">
+            <label for="num_installments">Número de Parcelas</label>
+            <input type="number" id="num_installments" name="num_installments" class="form-control" value="1" min="1" required>
+        </div>
+        <div class="form-group">
             <label for="observacao">Observação</label>
             <textarea id="observacao" name="observacao" class="form-control" rows="2" placeholder="Opcional..."></textarea>
-        </div>
-        <div class="form-group checkbox-group">
-            <label class="checkbox-label">
-                <input type="checkbox" name="recorrente" id="recorrente">
-                <span>Conta recorrente (mensal)</span>
-            </label>
         </div>
         <div class="form-actions">
             <button type="submit" class="btn btn-warning btn-lg"><i class="fas fa-save"></i> Salvar Conta</button>

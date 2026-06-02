@@ -16,6 +16,7 @@ document.querySelectorAll('.js-abrir-baixa').forEach(button => {
         const contaId = Number(button.dataset.contaId);
         const descricao = button.dataset.contaDescricao || '';
         const valor = Number(button.dataset.contaValor || 0);
-        abrirBaixa(contaId, descricao, valor);
+        const valorPago = Number(button.dataset.contaValorPago || 0);
+        abrirBaixa(contaId, descricao, valor, valorPago);
     });
 });

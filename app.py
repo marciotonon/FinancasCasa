@@ -1,7 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 import json
 import os
+import re
 from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
 from collections import defaultdict
 
 app = Flask(__name__)
@@ -45,10 +47,18 @@ def group_contas_by_month(contas):
                 "chave": chave_mes,
                 "titulo": f"{MONTH_NAMES.get(mes, mes)} de {ano}",
                 "contas": [],
+                "total": 0.0,
+                "total_pago": 0.0,
+                "total_a_pagar": 0.0,
             }
             grupos.append(grupo_atual)
 
         grupo_atual["contas"].append(conta)
+        grupo_atual["total"] += conta.get("valor", 0)
+        if conta.get("status") == "pago":
+            grupo_atual["total_pago"] += conta.get("valor", 0)
+        else:
+            grupo_atual["total_a_pagar"] += max(conta.get("valor", 0) - conta.get("valor_pago", 0), 0)
 
     return grupos
 
@@ -161,11 +171,14 @@ def contas():
     data = load_data()
     filtro_status = request.args.get("status", "")
     filtro_mes = request.args.get("mes", "")
+    filtro_nome = request.args.get("nome", "").strip()
     lista = data["contas"]
     if filtro_status:
         lista = [c for c in lista if c["status"] == filtro_status]
     if filtro_mes:
         lista = [c for c in lista if c["vencimento"].startswith(filtro_mes)]
+    if filtro_nome:
+        lista = [c for c in lista if filtro_nome.lower() in c["descricao"].lower()]
     lista = sorted(lista, key=lambda x: x["vencimento"])
     contas_por_mes = group_contas_by_month(lista)
     hoje = date.today().isoformat()
@@ -175,6 +188,7 @@ def contas():
         contas_por_mes=contas_por_mes,
         filtro_status=filtro_status,
         filtro_mes=filtro_mes,
+        filtro_nome=filtro_nome,
         hoje=hoje,
         categorias=data["categorias"],
     )
@@ -183,19 +197,37 @@ def contas():
 def nova_conta():
     data = load_data()
     if request.method == "POST":
-        conta = {
-            "id": int(datetime.now().timestamp() * 1000),
-            "descricao": request.form["descricao"],
-            "valor": float(request.form["valor"]),
-            "vencimento": request.form["vencimento"],
-            "categoria": request.form["categoria"],
-            "status": "pendente",
-            "observacao": request.form.get("observacao", ""),
-            "recorrente": request.form.get("recorrente") == "on"
-        }
-        data["contas"].append(conta)
+        descricao = request.form["descricao"]
+        valor = float(request.form["valor"])
+        vencimento_str = request.form["vencimento"]
+        categoria = request.form["categoria"]
+        observacao = request.form.get("observacao", "")
+        num_installments = int(request.form.get("num_installments", 1))
+
+        entrada = float(request.form.get("entrada") or 0)
+        initial_vencimento = datetime.strptime(vencimento_str, "%Y-%m-%d").date()
+
+        for i in range(num_installments):
+            current_vencimento = initial_vencimento + relativedelta(months=+i)
+            conta = {
+                "id": int(datetime.now().timestamp() * 1000) + i,
+                "descricao": f"{descricao} ({i+1}/{num_installments})" if num_installments > 1 else descricao,
+                "valor": valor,
+                "valor_original": valor,
+                "juros": 0.0,
+                "entrada": entrada if i == 0 else 0.0,
+                "valor_pago": entrada if i == 0 else 0.0,
+                "vencimento": current_vencimento.isoformat(),
+                "categoria": categoria,
+                "status": "pendente",
+                "observacao": observacao,
+                "recorrente": num_installments > 1 or request.form.get("recorrente") == "on"
+            }
+            data["contas"].append(conta)
+
         save_data(data)
         return redirect(url_for("contas"))
+
     return render_template("form_conta.html", categorias=data["categorias"], hoje=date.today().isoformat())
 
 @app.route("/contas/baixar/<int:cid>", methods=["POST"])
@@ -203,29 +235,113 @@ def baixar_conta(cid):
     data = load_data()
     data_pagamento = request.form.get("data_pagamento") or date.today().isoformat()
     origem = request.form.get("origem", "contas")
+    forma = request.form.get("forma_pagamento", "dinheiro")
     for conta in data["contas"]:
         if conta["id"] == cid:
+            if forma == "parcelamento":
+                valor_parcial = float(request.form.get("valor_parcial") or 0)
+                valor_pago_atual = conta.get("valor_pago", 0) + valor_parcial
+                conta["valor_pago"] = round(valor_pago_atual, 2)
+                transacao = {
+                    "id": int(datetime.now().timestamp() * 1000),
+                    "descricao": f"Pagamento parcial: {conta['descricao']}",
+                    "valor": valor_parcial,
+                    "tipo": "saida",
+                    "categoria": conta.get("categoria", "Outros"),
+                    "data": data_pagamento,
+                    "observacao": f"Pagamento parcial da conta #{cid}",
+                    "cancelado": False
+                }
+                data["transacoes"].append(transacao)
+                # Se valor pago >= valor total, marca como pago
+                if conta["valor_pago"] >= conta["valor"]:
+                    conta["status"] = "pago"
+                    conta["data_pagamento"] = data_pagamento
+            else:
+                conta["status"] = "pago"
+                conta["data_pagamento"] = data_pagamento
+                conta["valor_pago"] = conta["valor"]
+                transacao = {
+                    "id": int(datetime.now().timestamp() * 1000),
+                    "descricao": f"Pagamento: {conta['descricao']}",
+                    "valor": conta["valor"],
+                    "tipo": "saida",
+                    "categoria": conta.get("categoria", "Outros"),
+                    "data": data_pagamento,
+                    "observacao": f"Baixa automática da conta #{cid}",
+                    "cancelado": False
+                }
+                data["transacoes"].append(transacao)
+            break
+    save_data(data)
+    return redirect(url_for(origem))
+
+@app.route("/contas/baixar-multiplo", methods=["POST"])
+def baixar_multiplo():
+    data = load_data()
+    ids = request.form.getlist("ids[]")
+    data_pagamento = request.form.get("data_pagamento") or date.today().isoformat()
+    ids_int = set(int(i) for i in ids if i.isdigit())
+    for conta in data["contas"]:
+        if conta["id"] in ids_int and conta["status"] == "pendente":
             conta["status"] = "pago"
             conta["data_pagamento"] = data_pagamento
+            conta["valor_pago"] = conta["valor"]
             transacao = {
-                "id": int(datetime.now().timestamp() * 1000),
+                "id": int(datetime.now().timestamp() * 1000) + conta["id"],
                 "descricao": f"Pagamento: {conta['descricao']}",
                 "valor": conta["valor"],
                 "tipo": "saida",
                 "categoria": conta.get("categoria", "Outros"),
                 "data": data_pagamento,
-                "observacao": f"Baixa automática da conta #{cid}",
+                "observacao": f"Baixa múltipla da conta #{conta['id']}",
                 "cancelado": False
             }
             data["transacoes"].append(transacao)
-            break
     save_data(data)
-    return redirect(url_for(origem))
+    return redirect(url_for("contas"))
+
+@app.route("/contas/editar/<int:cid>", methods=["GET", "POST"])
+def editar_conta(cid):
+    data = load_data()
+    conta = next((c for c in data["contas"] if c["id"] == cid), None)
+    if not conta:
+        return redirect(url_for("contas"))
+    if request.method == "POST":
+        conta["descricao"] = request.form["descricao"]
+        valor_base = float(request.form["valor"])
+        juros = float(request.form.get("juros") or 0)
+        entrada = float(request.form.get("entrada") or 0)
+        valor_pago = float(request.form.get("valor_pago") or 0)
+        conta["valor_original"] = valor_base
+        conta["juros"] = juros
+        conta["valor"] = round(valor_base + juros, 2)
+        conta["entrada"] = entrada
+        conta["valor_pago"] = valor_pago
+        conta["vencimento"] = request.form["vencimento"]
+        conta["categoria"] = request.form["categoria"]
+        conta["observacao"] = request.form.get("observacao", "")
+        save_data(data)
+        return redirect(url_for("contas"))
+    return render_template("editar_conta.html", conta=conta, categorias=data["categorias"])
 
 @app.route("/contas/excluir/<int:cid>", methods=["POST"])
 def excluir_conta(cid):
     data = load_data()
-    data["contas"] = [c for c in data["contas"] if c["id"] != cid]
+    conta = next((c for c in data["contas"] if c["id"] == cid), None)
+    ids_to_delete = {cid}
+
+    if conta:
+        m = re.match(r'^(.+) \((\d+)/(\d+)\)$', conta["descricao"])
+        if m:
+            base, current, total = m.group(1), int(m.group(2)), int(m.group(3))
+            for c in data["contas"]:
+                if c["id"] != cid:
+                    mc = re.match(r'^(.+) \((\d+)/(\d+)\)$', c["descricao"])
+                    if mc and mc.group(1) == base and int(mc.group(3)) == total and int(mc.group(2)) >= current:
+                        ids_to_delete.add(c["id"])
+
+    data["contas"] = [c for c in data["contas"] if c["id"] not in ids_to_delete]
     save_data(data)
     return redirect(url_for("contas"))
 
