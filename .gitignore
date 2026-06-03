@@ -5,4 +5,5 @@ __pycache__/
 *.pyd
 .pytest_cache/
 py.rar
-data.json
+*.json
+*.json.bkp
