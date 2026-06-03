@@ -28,7 +28,7 @@ body {
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
     background: var(--bg);
     color: var(--text);
-    min-height: 100vh;
+    min-height: 120vh;
 }
 
 /* NAVBAR */
@@ -73,7 +73,7 @@ body {
 
 /* CONTAINER */
 .container {
-    max-width: 1200px;
+    max-width: 1350px;
     margin: 0 auto;
     padding: 2rem 1.5rem;
 }
@@ -249,6 +249,9 @@ body {
 .btn-sm { padding: 5px 10px; font-size: 0.8rem; border-radius: 6px; }
 .btn-lg { padding: 12px 28px; font-size: 1rem; }
 .col-check { width: 36px; text-align: center; }
+.paginacao { padding: 0.75rem 1rem; }
+.pag-wrap { display: flex; align-items: center; gap: 0.75rem; }
+.pag-info { font-size: 0.85rem; color: var(--text-muted); }
 
 /* FORMS */
 .form-row {

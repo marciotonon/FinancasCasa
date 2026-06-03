@@ -9,7 +9,17 @@
     </div>
 </div>
 
-<div class="cards-grid">
+<!-- Filtro de mês -->
+<form method="get" id="form-filtro-mes" style="margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <label style="font-weight:600;color:var(--text-muted)"><i class="fas fa-calendar-alt"></i> Filtrar por mês:</label>
+    <input type="month" name="mes" value="{{ filtro_mes }}" class="form-control" style="width:auto" onchange="this.form.submit()">
+    {% if filtro_mes %}
+    <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm"><i class="fas fa-times"></i> Limpar</a>
+    {% endif %}
+</form>
+
+<!-- Cards de resumo (5 colunas) -->
+<div class="cards-grid" style="grid-template-columns:repeat(5,1fr)">
     <div class="card card-green">
         <div class="card-icon"><i class="fas fa-arrow-down"></i></div>
         <div class="card-info">
@@ -34,24 +44,32 @@
     <div class="card card-orange">
         <div class="card-icon"><i class="fas fa-clock"></i></div>
         <div class="card-info">
-            <span class="card-label">Contas Pendentes</span>
+            <span class="card-label">Pendentes</span>
             <span class="card-value">{{ resumo.contas_pendentes }} | R$ {{ "%.2f"|format(resumo.total_pendente) }}</span>
+        </div>
+    </div>
+    <div class="card card-red">
+        <div class="card-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="card-info">
+            <span class="card-label">Vencidas</span>
+            <span class="card-value">{{ resumo.contas_vencidas }} | R$ {{ "%.2f"|format(resumo.total_vencidas) }}</span>
         </div>
     </div>
 </div>
 
 <div class="grid-2col">
+    <!-- Transações -->
     <div class="panel">
         <div class="panel-header">
-            <h2><i class="fas fa-history"></i> Últimas Transações</h2>
+            <h2><i class="fas fa-history"></i> Transações</h2>
             <a href="{{ url_for('transacoes') }}" class="link-all">Ver todas</a>
         </div>
         {% if transacoes %}
-        <table class="table">
+        <table class="table" id="tbl-transacoes">
             <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead>
             <tbody>
             {% for t in transacoes %}
-            <tr>
+            <tr class="row-t">
                 <td>{{ t.data }}</td>
                 <td>{{ t.descricao }}</td>
                 <td><span class="badge">{{ t.categoria }}</span></td>
@@ -62,22 +80,24 @@
             {% endfor %}
             </tbody>
         </table>
+        <div id="pag-t" class="paginacao"></div>
         {% else %}
         <div class="empty-state"><i class="fas fa-inbox"></i><p>Nenhuma transação registrada.</p></div>
         {% endif %}
     </div>
 
+    <!-- Contas Pendentes -->
     <div class="panel">
         <div class="panel-header">
-            <h2><i class="fas fa-exclamation-circle"></i> Contas a Vencer</h2>
+            <h2><i class="fas fa-exclamation-circle"></i> Contas Pendentes</h2>
             <a href="{{ url_for('contas') }}" class="link-all">Ver todas</a>
         </div>
         {% if contas_pendentes %}
-        <table class="table">
+        <table class="table" id="tbl-contas">
             <thead><tr><th>Vencimento</th><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead>
             <tbody>
             {% for c in contas_pendentes %}
-            <tr class="{% if c.vencimento < hoje %}row-vencida{% endif %}">
+            <tr class="row-c {% if c.vencimento < hoje %}row-vencida{% endif %}">
                 <td>
                     {{ c.vencimento }}
                     {% if c.vencimento < hoje %}<span class="badge badge-red">Vencida</span>{% endif %}
@@ -85,7 +105,7 @@
                 <td>{{ c.descricao }}</td>
                 <td class="valor-negativo">R$ {{ "%.2f"|format(c.valor) }}</td>
                 <td>
-                    <button class="btn btn-sm btn-green" onclick="abrirBaixa({{ c.id }}, '{{ c.descricao }}', {{ c.valor }})" title="Baixar conta">
+                    <button class="btn btn-sm btn-green" onclick="abrirBaixa({{ c.id }}, '{{ c.descricao }}', {{ c.valor }}, {{ c.valor_pago if c.valor_pago is defined else 0 }})" title="Baixar conta">
                         <i class="fas fa-check"></i>
                     </button>
                 </td>
@@ -93,9 +113,51 @@
             {% endfor %}
             </tbody>
         </table>
+        <div id="pag-c" class="paginacao"></div>
         {% else %}
         <div class="empty-state"><i class="fas fa-check-circle"></i><p>Nenhuma conta pendente!</p></div>
         {% endif %}
     </div>
 </div>
+
+<script>
+function criarPaginacao(seletorLinhas, containerId, porPagina) {
+    const linhas = Array.from(document.querySelectorAll(seletorLinhas));
+    if (!linhas.length) return;
+    const container = document.getElementById(containerId);
+    let pagAtual = 1;
+    const totalPags = Math.ceil(linhas.length / porPagina);
+
+    function renderizar() {
+        linhas.forEach((tr, i) => {
+            tr.style.display = (i >= (pagAtual - 1) * porPagina && i < pagAtual * porPagina) ? '' : 'none';
+        });
+        container.innerHTML = '';
+        if (totalPags <= 1) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'pag-wrap';
+        const prev = document.createElement('button');
+        prev.className = 'btn btn-sm btn-secondary';
+        prev.innerHTML = '&laquo; Anterior';
+        prev.disabled = pagAtual === 1;
+        prev.onclick = () => { pagAtual--; renderizar(); };
+        wrap.appendChild(prev);
+        const info = document.createElement('span');
+        info.className = 'pag-info';
+        info.textContent = `Página ${pagAtual} de ${totalPags}`;
+        wrap.appendChild(info);
+        const next = document.createElement('button');
+        next.className = 'btn btn-sm btn-secondary';
+        next.innerHTML = 'Próxima &raquo;';
+        next.disabled = pagAtual === totalPags;
+        next.onclick = () => { pagAtual++; renderizar(); };
+        wrap.appendChild(next);
+        container.appendChild(wrap);
+    }
+    renderizar();
+}
+
+criarPaginacao('#tbl-transacoes .row-t', 'pag-t', 15);
+criarPaginacao('#tbl-contas .row-c', 'pag-c', 15);
+</script>
 {% endblock %}

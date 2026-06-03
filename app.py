@@ -93,25 +93,45 @@ def group_transacoes_by_month(transacoes):
 def get_resumo(data):
     entradas = sum(t["valor"] for t in data["transacoes"] if t["tipo"] == "entrada" and not t.get("cancelado"))
     saidas = sum(t["valor"] for t in data["transacoes"] if t["tipo"] == "saida" and not t.get("cancelado"))
+    hoje = date.today().isoformat()
     contas_pendentes = [c for c in data["contas"] if c["status"] == "pendente"]
+    contas_vencidas = [c for c in contas_pendentes if c["vencimento"] < hoje]
     total_pendente = sum(c["valor"] for c in contas_pendentes)
+    total_vencidas = sum(c["valor"] for c in contas_vencidas)
     return {
         "entradas": entradas,
         "saidas": saidas,
         "saldo": entradas - saidas,
         "total_pendente": total_pendente,
-        "contas_pendentes": len(contas_pendentes)
+        "contas_pendentes": len(contas_pendentes),
+        "total_vencidas": total_vencidas,
+        "contas_vencidas": len(contas_vencidas)
     }
 
 @app.route("/")
 def index():
     data = load_data()
+    filtro_mes = request.args.get("mes", "")
     resumo = get_resumo(data)
-    transacoes = sorted(data["transacoes"], key=lambda x: x["data"], reverse=True)[:10]
-    contas_pendentes = [c for c in data["contas"] if c["status"] == "pendente"]
-    contas_pendentes.sort(key=lambda x: x["vencimento"])
     hoje = date.today().isoformat()
-    return render_template("index.html", resumo=resumo, transacoes=transacoes, contas_pendentes=contas_pendentes, hoje=hoje)
+
+    transacoes = sorted(data["transacoes"], key=lambda x: x["data"], reverse=True)
+    if filtro_mes:
+        transacoes = [t for t in transacoes if t["data"].startswith(filtro_mes)]
+
+    contas_pendentes = [c for c in data["contas"] if c["status"] == "pendente"]
+    if filtro_mes:
+        contas_pendentes = [c for c in contas_pendentes if c["vencimento"].startswith(filtro_mes)]
+    contas_pendentes.sort(key=lambda x: x["vencimento"])
+
+    return render_template(
+        "index.html",
+        resumo=resumo,
+        transacoes=transacoes,
+        contas_pendentes=contas_pendentes,
+        filtro_mes=filtro_mes,
+        hoje=hoje
+    )
 
 @app.route("/transacoes")
 def transacoes():
