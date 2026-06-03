@@ -2,12 +2,14 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 import json
 import os
 import re
+import shutil
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from collections import defaultdict
 
 app = Flask(__name__)
 DATA_FILE = "data.json"
+BACKUP_FILE = "data.json.bkp"
 
 MONTH_NAMES = {
     "01": "Janeiro",
@@ -31,8 +33,15 @@ def load_data():
         return json.load(f)
 
 def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
+    temp_file = f"{DATA_FILE}.tmp"
+
+    if os.path.exists(DATA_FILE):
+        shutil.copy2(DATA_FILE, BACKUP_FILE)
+
+    with open(temp_file, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+    os.replace(temp_file, DATA_FILE)
 
 def group_contas_by_month(contas):
     grupos = []
