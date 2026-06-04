@@ -39,6 +39,26 @@
                 <input type="date" id="data" name="data" class="form-control" value="{{ hoje }}" required>
             </div>
         </div>
+        <div class="form-group" id="row-parcelas" style="display:none">
+            <label for="num_parcelas">Número de Parcelas</label>
+            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+                <select id="num_parcelas" name="num_parcelas" class="form-control" style="width:auto">
+                    <option value="1">À vista (1x)</option>
+                    <option value="2">2x</option>
+                    <option value="3">3x</option>
+                    <option value="4">4x</option>
+                    <option value="5">5x</option>
+                    <option value="6">6x</option>
+                    <option value="7">7x</option>
+                    <option value="8">8x</option>
+                    <option value="9">9x</option>
+                    <option value="10">10x</option>
+                    <option value="11">11x</option>
+                    <option value="12">12x</option>
+                </select>
+                <span id="info-parcela" style="color:var(--text-muted);font-size:0.9rem"></span>
+            </div>
+        </div>
         <div class="form-group">
             <label for="observacao">Observação</label>
             <textarea id="observacao" name="observacao" class="form-control" rows="2" placeholder="Opcional..."></textarea>
@@ -49,4 +69,38 @@
         </div>
     </form>
 </div>
+
+<script>
+const elTipo = document.getElementById('tipo');
+const elCat = document.getElementById('categoria');
+const elValor = document.getElementById('valor');
+const rowParcelas = document.getElementById('row-parcelas');
+const selParcelas = document.getElementById('num_parcelas');
+const infoParcela = document.getElementById('info-parcela');
+
+function verificarCartao() {
+    const isCartao = elTipo.value === 'entrada' && elCat.value === 'Cartao de Crédito';
+    rowParcelas.style.display = isCartao ? '' : 'none';
+    if (!isCartao) selParcelas.value = '1';
+    atualizarInfo();
+}
+
+function atualizarInfo() {
+    const n = parseInt(selParcelas.value) || 1;
+    const v = parseFloat(elValor.value) || 0;
+    if (n > 1 && v > 0) {
+        const parc = (v / n).toFixed(2).replace('.', ',');
+        infoParcela.textContent = `= R$ ${parc} por parcela`;
+    } else {
+        infoParcela.textContent = '';
+    }
+}
+
+elTipo.addEventListener('change', verificarCartao);
+elCat.addEventListener('change', verificarCartao);
+elValor.addEventListener('input', atualizarInfo);
+selParcelas.addEventListener('change', atualizarInfo);
+
+verificarCartao();
+</script>
 {% endblock %}

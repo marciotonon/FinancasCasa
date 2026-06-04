@@ -173,17 +173,49 @@ def transacoes():
 def nova_transacao():
     data = load_data()
     if request.method == "POST":
+        descricao = request.form["descricao"]
+        valor = float(request.form["valor"])
+        tipo = request.form["tipo"]
+        categoria = request.form["categoria"]
+        data_trans = request.form["data"]
+        observacao = request.form.get("observacao", "")
+        num_parcelas = int(request.form.get("num_parcelas") or 1)
+
         transacao = {
             "id": int(datetime.now().timestamp() * 1000),
-            "descricao": request.form["descricao"],
-            "valor": float(request.form["valor"]),
-            "tipo": request.form["tipo"],
-            "categoria": request.form["categoria"],
-            "data": request.form["data"],
-            "observacao": request.form.get("observacao", ""),
+            "descricao": descricao,
+            "valor": valor,
+            "tipo": tipo,
+            "categoria": categoria,
+            "data": data_trans,
+            "observacao": observacao,
             "cancelado": False
         }
         data["transacoes"].append(transacao)
+
+        # Cartão de Crédito como entrada: criar contas a pagar parceladas no(s) mês(es) seguinte(s)
+        if tipo == "entrada" and categoria == "Cartao de Crédito" and num_parcelas >= 1:
+            valor_parcela = round(valor / num_parcelas, 2)
+            data_base = datetime.strptime(data_trans, "%Y-%m-%d").date()
+            for i in range(num_parcelas):
+                vencimento = (data_base + relativedelta(months=i + 1)).replace(day=1)
+                suffix = f" ({i+1}/{num_parcelas})" if num_parcelas > 1 else ""
+                conta = {
+                    "id": int(datetime.now().timestamp() * 1000) + i + 1,
+                    "descricao": f"Fatura Cartão - {descricao}{suffix}",
+                    "valor": valor_parcela,
+                    "valor_original": valor_parcela,
+                    "juros": 0.0,
+                    "entrada": 0.0,
+                    "valor_pago": 0.0,
+                    "vencimento": vencimento.isoformat(),
+                    "categoria": "Cartao de Crédito",
+                    "status": "pendente",
+                    "observacao": f"Gerado automaticamente da transação #{transacao['id']}",
+                    "recorrente": num_parcelas > 1
+                }
+                data["contas"].append(conta)
+
         save_data(data)
         return redirect(url_for("transacoes"))
     return render_template("form_transacao.html", categorias=data["categorias"], hoje=date.today().isoformat())
